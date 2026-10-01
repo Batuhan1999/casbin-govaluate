@@ -332,6 +332,10 @@ func readUntilFalse(stream *lexerStream, includeWhitespace bool, breakWhitespace
 		// Use backslashes to escape anything
 		if allowEscaping && character == '\\' {
 			reuseString = false
+			if !stream.canRead() {
+				// trailing backslash with nothing to escape
+				break
+			}
 			character = stream.readCharacter()
 			tokenBuffer.WriteString(string(character))
 			continue

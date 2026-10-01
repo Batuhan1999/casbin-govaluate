@@ -196,6 +196,17 @@ func TestParsingFailure(test *testing.T) {
 			Input:    "0x12g1",
 			Expected: INVALID_TOKEN_TRANSITION,
 		},
+		{
+			// used to panic with "index out of range" (readCharacter past EOF)
+			Name:     "Trailing backslash",
+			Input:    "\\",
+			Expected: INVALID_TOKEN_KIND,
+		},
+		{
+			Name:     "Trailing backslash in string literal",
+			Input:    "'x\\",
+			Expected: UNCLOSED_QUOTES,
+		},
 	}
 
 	runParsingFailureTests(parsingTests, test)
