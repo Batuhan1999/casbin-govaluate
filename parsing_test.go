@@ -1749,3 +1749,26 @@ func TestParallelParsing(t *testing.T) {
 
 	wg.Wait()
 }
+
+// Expressions containing invalid UTF-8 bytes in string literals used to corrupt
+// the lexer's byte-position tracking and panic with "slice bounds out of range"
+// (strPosition overran sourceString). They must now parse without panicking.
+func TestParsing_InvalidUTF8NoPanic(t *testing.T) {
+	inputs := []string{
+		"\"\xff\"",
+		"\"\xff\"0",
+		"a + \"\xff\" + b",
+		"\"\xc3\x28\"",
+		"'日本' == 'x'",
+	}
+	for _, input := range inputs {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("NewEvaluableExpression(%q) panicked: %v", input, r)
+				}
+			}()
+			_, _ = NewEvaluableExpression(input)
+		}()
+	}
+}

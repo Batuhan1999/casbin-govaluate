@@ -37,26 +37,36 @@ func newLexerStream(source string) *lexerStream {
 func (stream *lexerStream) readCharacter() rune {
 	character := stream.source[stream.position]
 	stream.position += 1
-	stream.strPosition += utf8.RuneLen(character)
+	// Advance strPosition by the number of bytes this rune actually occupies in
+	// the original source string. utf8.RuneLen cannot be used here: ranging over
+	// invalid UTF-8 yields utf8.RuneError (3 bytes) for a single source byte, so
+	// RuneLen would overcount and push strPosition past len(sourceString).
+	_, size := utf8.DecodeRuneInString(stream.sourceString[stream.strPosition:])
+	stream.strPosition += size
 	return character
 }
 
 func (stream *lexerStream) rewind(amount int) {
 	if amount < 0 {
-		stream.position -= amount
-		stream.strPosition -= amount
-	}
-	strAmount := 0
-	for i := 0; i < amount; i++ {
-		if stream.position >= stream.length {
-			strAmount += 1
-			stream.position -= 1
-			continue
+		// Advance forward by -amount runes (used as rewind(-1)).
+		for i := 0; i < -amount; i++ {
+			if stream.position >= stream.length {
+				break
+			}
+			_, size := utf8.DecodeRuneInString(stream.sourceString[stream.strPosition:])
+			stream.strPosition += size
+			stream.position += 1
 		}
-		strAmount += utf8.RuneLen(stream.source[stream.position-1])
-		stream.position -= 1
+		return
 	}
-	stream.strPosition -= strAmount
+	for i := 0; i < amount; i++ {
+		if stream.position <= 0 {
+			break
+		}
+		stream.position -= 1
+		_, size := utf8.DecodeLastRuneInString(stream.sourceString[:stream.strPosition])
+		stream.strPosition -= size
+	}
 }
 
 func (stream lexerStream) canRead() bool {
